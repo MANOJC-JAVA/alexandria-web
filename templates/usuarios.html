@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% from "_macros.html" import selo_status with context %}
+{% block titulo %}Usuários{% endblock %}
+{% block conteudo %}
+<header class="topo">
+  <div><p class="sobretitulo">CADASTROS</p><h1>Usuários</h1></div>
+  <div class="acoes">
+    <a class="btn ouro" href="{{ url_for('usuarios', novo=1) }}">Novo usuário</a>
+    <a class="btn" href="{{ url_for('exportar_csv') }}">Exportar CSV</a>
+  </div>
+</header>
+
+<section class="duas usuarios">
+  <div class="cartao">
+    <form method="get" class="filtros">
+      <input type="search" name="busca" value="{{ busca }}" placeholder="Nome, e-mail ou matrícula" aria-label="Buscar usuário">
+      <select name="tipo" aria-label="Tipo"><option value="">Todos os tipos</option>
+        {% for t in tipos %}<option {{ 'selected' if t == tipo }}>{{ t }}</option>{% endfor %}
+      </select>
+      <button class="btn">Filtrar</button>
+    </form>
+    <table class="tabela">
+      <thead><tr><th>Nome</th><th>Tipo</th><th>Matrícula</th><th>Ativos</th><th>Situação</th></tr></thead>
+      <tbody>
+      {% for p in pessoas %}
+        <tr class="{{ 'sel' if sel and sel.id == p.id }}">
+          <td><a href="{{ url_for('usuarios', ver=p.id, busca=busca, tipo=tipo) }}">{{ p.nome }}</a><br><small class="mudo">{{ p.email }}</small></td>
+          <td>{{ p.tipo }}</td><td>{{ p.matricula }}</td><td>{{ p.ativos }}</td>
+          <td><span class="selo {{ 'verde' if p.ativo else 'cinza' }}">{{ 'Ativo' if p.ativo else 'Inativo' }}</span></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <aside class="cartao painel">
+    {% if sel or novo %}
+    <h2>{{ sel.nome if sel else 'Novo usuário' }}</h2>
+    <form method="post" class="form-grade uma">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      {% if sel %}<input type="hidden" name="id" value="{{ sel.id }}">{% endif %}
+      <label>Nome *<input name="nome" value="{{ sel.nome if sel }}" required></label>
+      <label>E-mail *<input name="email" type="email" value="{{ sel.email if sel }}" required></label>
+      <label>Telefone<input name="telefone" value="{{ sel.telefone if sel }}"></label>
+      <label>Tipo<select name="tipo">{% for t in tipos %}<option {{ 'selected' if sel and sel.tipo == t }}>{{ t }}</option>{% endfor %}</select></label>
+      <label>Matrícula * (senha do leitor)<input name="matricula" value="{{ sel.matricula if sel }}" required></label>
+      <label class="check"><input type="checkbox" name="ativo" value="1" {{ 'checked' if not sel or sel.ativo }}> Cadastro ativo</label>
+      <button class="btn ouro">Salvar</button>
+    </form>
+    {% if sel %}
+    <div class="acoes">
+      <form method="post" action="{{ url_for('alternar_ativo', pid=sel.id) }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn mini">{{ 'Inativar' if sel.ativo else 'Ativar' }}</button></form>
+      <form method="post" action="{{ url_for('remover', pid=sel.id) }}" data-confirmar="Remover {{ sel.nome }}? Esta ação não pode ser desfeita."><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn mini perigo">Remover</button></form>
+      <a class="btn mini" href="{{ url_for('emprestimos', pessoa=sel.id) }}">Novo empréstimo</a>
+    </div>
+    <h3>Histórico de empréstimos</h3>
+    {% for e in hist %}<p class="item">{{ e.titulo }} <span class="mudo">{{ e.retirada | br }}</span> {{ selo_status(e) }}</p>
+    {% else %}<p class="mudo">Sem empréstimos.</p>{% endfor %}
+    {% endif %}
+    {% else %}
+    <p class="mudo">Selecione um usuário na lista para ver os dados, o histórico e as ações.</p>
+    {% endif %}
+  </aside>
+</section>
+{% endblock %}

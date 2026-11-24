@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% from "_macros.html" import selo_status with context %}
+{% block titulo %}Empréstimos{% endblock %}
+{% block conteudo %}
+<header class="topo"><div><p class="sobretitulo">CIRCULAÇÃO</p><h1>Empréstimos</h1></div></header>
+
+<section class="cartao">
+  <h2>Registrar empréstimo</h2>
+  <form method="post" class="form-grade" id="form-emprestimo">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>Leitor
+      <select name="pessoa" id="sel-pessoa" required>
+        <option value="">Selecione...</option>
+        {% for p in leitores %}
+          <option value="{{ p.id }}" data-prazo="{{ 14 if p.tipo == 'Estudante' else 21 }}" {{ 'selected' if p.id == pessoa_sel }}>{{ p.nome }} · {{ p.tipo }} · {{ p.matricula }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Livro (somente com exemplar disponível)
+      <select name="livro" required>
+        <option value="">Selecione...</option>
+        {% for l in livros %}<option value="{{ l.id }}" {{ 'selected' if l.id == livro_sel }}>{{ l.titulo }} — {{ l.autor }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Retirada<input type="date" name="retirada" id="retirada" value="{{ hoje.isoformat() }}" required></label>
+    <label>Devolução prevista<input type="date" name="previsto" id="previsto" required></label>
+    <p class="mudo regra">Limite: 3 empréstimos simultâneos para estudantes (14 dias) e 5 para os demais (21 dias). Até 2 renovações.</p>
+    <button class="btn ouro">Confirmar empréstimo</button>
+  </form>
+</section>
+
+<section class="cartao">
+  <div class="cartao-topo">
+    <h2>Empréstimos em andamento ({{ ativos | length }})</h2>
+    <span class="alterna">
+      <a class="{{ 'on' if not filtro }}" href="{{ url_for('emprestimos') }}">Todos</a>
+      <a class="{{ 'on' if filtro == 'atrasados' }}" href="{{ url_for('emprestimos', filtro='atrasados') }}">Atrasados</a>
+    </span>
+  </div>
+  <table class="tabela">
+    <thead><tr><th>Livro</th><th>Leitor</th><th>Retirada</th><th>Previsto</th><th>Renov.</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for e in ativos %}
+      <tr>
+        <td>{{ e.titulo }}</td><td>{{ e.nome }}</td><td>{{ e.retirada | br }}</td><td>{{ e.previsto | br }}</td>
+        <td>{{ e.renovacoes }}/2</td><td>{{ selo_status(e) }}</td>
+        <td class="botoes">
+          <form method="post" action="{{ url_for('renovar', emp_id=e.id) }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn mini">Renovar</button></form>
+          <form method="post" action="{{ url_for('devolver', emp_id=e.id) }}" data-confirmar="Confirmar a devolução de “{{ e.titulo }}”?"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn mini ouro">Devolver</button></form>
+        </td>
+      </tr>
+    {% else %}<tr><td colspan="7" class="mudo">Nenhum empréstimo nesta lista.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="cartao">
+  <h2>Devolvidos recentemente</h2>
+  <table class="tabela">
+    <thead><tr><th>Livro</th><th>Leitor</th><th>Retirada</th><th>Devolvido em</th></tr></thead>
+    <tbody>{% for e in recentes %}<tr><td>{{ e.titulo }}</td><td>{{ e.nome }}</td><td>{{ e.retirada | br }}</td><td>{{ e.devolvido | br }}</td></tr>{% endfor %}</tbody>
+  </table>
+</section>
+{% endblock %}

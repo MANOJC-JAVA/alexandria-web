@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Alexandria{% endblock %} · Alexandria</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/estilo.css') }}">
+</head>
+<body>
+{% from "_macros.html" import logo %}
+{% if perfil %}
+<div class="layout">
+  <aside class="menu" id="menu">
+    <a class="marca" href="{{ url_for('inicio') }}" aria-label="Alexandria - Início">
+      {{ logo(34) }}
+      <b>ALEXANDRIA</b>
+      <small>SISTEMA DE GESTÃO DE BIBLIOTECA</small>
+    </a>
+    {% set ativo = request.endpoint %}
+    <nav>
+      <a href="{{ url_for('inicio') }}" class="{{ 'on' if ativo == 'inicio' }}">Início</a>
+      <a href="{{ url_for('catalogo') }}" class="{{ 'on' if ativo in ('catalogo','detalhe') }}">Pesquisar livros</a>
+      {% if perfil == 'equipe' %}
+      <a href="{{ url_for('emprestimos') }}" class="{{ 'on' if ativo == 'emprestimos' }}">Empréstimos</a>
+      {% endif %}
+      <a href="{{ url_for('reservas') }}" class="{{ 'on' if ativo == 'reservas' }}">Reservas</a>
+      {% if perfil == 'equipe' %}
+      <a href="{{ url_for('acervo') }}" class="{{ 'on' if ativo == 'acervo' }}">Acervo</a>
+      <a href="{{ url_for('usuarios') }}" class="{{ 'on' if ativo == 'usuarios' }}">Usuários</a>
+      <a href="{{ url_for('relatorios') }}" class="{{ 'on' if ativo == 'relatorios' }}">Relatórios</a>
+      {% endif %}
+    </nav>
+    <div class="quem">
+      <span class="avatar">{{ usuario[:1] }}</span>
+      <span><b>{{ usuario }}</b><small>{{ cargo }}</small></span>
+      <a class="sair" href="{{ url_for('sair') }}" title="Sair do sistema">Sair</a>
+    </div>
+  </aside>
+  <main class="conteudo">
+    <button class="abre-menu" type="button" onclick="document.getElementById('menu').classList.toggle('aberto')">☰ Menu</button>
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% for cat, m in msgs %}<div class="aviso {{ cat }}" role="status">{{ m }}</div>{% endfor %}
+    {% endwith %}
+    {% block conteudo %}{% endblock %}
+  </main>
+</div>
+{% else %}
+  {% block publico %}{% endblock %}
+{% endif %}
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

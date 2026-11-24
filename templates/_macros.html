@@ -1,0 +1,58 @@
+{% macro capa(l, tamanho='') %}
+<div class="capa tom-{{ l['tom'] | lower }} {{ tamanho }}" aria-hidden="true">
+  <span class="capa-titulo">{{ l['titulo'] }}</span>
+  <span class="capa-autor">{{ l['autor'] }}</span>
+</div>
+{% endmacro %}
+
+{% macro selo_disp(l) %}
+{% if l['disponiveis'] > 0 %}<span class="selo verde">{{ l['disponiveis'] }} disponível{{ 'is' if l['disponiveis'] > 1 }}</span>
+{% else %}<span class="selo vermelho">Indisponível</span>{% endif %}
+{% if l['especial'] %}<span class="selo ouro">Cofre Especial</span>{% endif %}
+{% endmacro %}
+
+{% macro selo_status(e) %}
+{% set s = status_emp(e) %}
+<span class="selo {{ 'vermelho' if s == 'Atrasado' else 'verde' if s == 'No prazo' else 'cinza' }}">{{ s }}</span>
+{% endmacro %}
+
+{% macro carrossel(recs) %}
+<div class="carrossel">
+  {% for r in recs %}
+  <article class="rec">
+    <a href="{{ url_for('detalhe', livro_id=r.livro['id']) }}">{{ capa(r.livro, 'media') }}</a>
+    <div class="rec-info">
+      <span class="selo ouro">{{ r.selo }}</span>
+      <h4><a href="{{ url_for('detalhe', livro_id=r.livro['id']) }}">{{ r.livro['titulo'] }}</a></h4>
+      <p class="mudo">{{ r.livro['autor'] }}</p>
+      {% if r.afinidade %}<div class="barra" title="Afinidade"><span style="width: {{ (r.afinidade * 100) | round }}%"></span></div>{% endif %}
+      <p class="motivo">{{ r.motivo }}</p>
+    </div>
+  </article>
+  {% else %}
+  <p class="mudo">A IA não encontrou obras para esse pedido. Tente outras palavras.</p>
+  {% endfor %}
+</div>
+{% endmacro %}
+
+{# Logo da barra lateral: arco, colunas, livro aberto e estrela (portado de Elementos.paintLogo) #}
+{% macro logo(largura=34) %}
+<svg class="logo" width="{{ largura }}" height="{{ (largura * 0.82) | round | int }}" viewBox="0 0 100 82" aria-hidden="true"
+     fill="none" stroke="currentColor" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 50.84 C12 4.1 88 4.1 88 50.84"/>
+  <path d="M20 32.8 V57.4 M80 32.8 V57.4"/>
+  <path d="M50 73.8 C40 63.96 20 62.32 6 65.6 L6 57.4 C20 54.12 40 55.76 50 65.6 C60 55.76 80 54.12 94 57.4 L94 65.6 C80 62.32 60 63.96 50 73.8"/>
+  <circle cx="50" cy="31.16" r="5" fill="currentColor" stroke="none"/>
+</svg>
+{% endmacro %}
+
+{# Brasão da tela de login (portado de HeaderBrandPanel) #}
+{% macro brasao() %}
+<svg class="brasao" width="120" height="99" viewBox="-40 8 80 66" aria-hidden="true"
+     fill="none" stroke="currentColor" stroke-width="1.6">
+  <path d="M-38 62 A19 10 0 0 0 0 62 A19 10 0 0 0 38 62 M-38 62 H38"/>
+  <rect x="-36" y="30" width="8" height="30"/><rect x="28" y="30" width="8" height="30"/>
+  <path d="M32 34 A32 20 0 0 0 -32 34"/><path d="M36 33 A36 23 0 0 0 -36 33"/>
+  <polygon points="0,29 2,34 7,36 2,38 0,43 -2,38 -7,36 -2,34" fill="currentColor" stroke="none"/>
+</svg>
+{% endmacro %}

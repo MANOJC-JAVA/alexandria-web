@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% from "_macros.html" import capa, selo_disp with context %}
+{% block titulo %}Pesquisar livros{% endblock %}
+{% block conteudo %}
+<header class="topo">
+  <div><p class="sobretitulo">CATÁLOGO</p><h1>Pesquisar livros</h1></div>
+  <p class="mudo">{{ total }} obra{{ 's' if total != 1 }} encontrada{{ 's' if total != 1 }}</p>
+</header>
+
+<form class="filtros cartao" method="get">
+  <input type="search" name="busca" value="{{ f.busca }}" placeholder="Título, autor, ISBN ou tema" aria-label="Buscar">
+  <select name="genero" aria-label="Gênero">
+    <option value="">Todos os gêneros</option>
+    {% for g in generos %}<option {{ 'selected' if g == f.genero }}>{{ g }}</option>{% endfor %}
+  </select>
+  <select name="disp" aria-label="Disponibilidade">
+    <option value="">Qualquer situação</option>
+    <option value="disponivel" {{ 'selected' if f.disp == 'disponivel' }}>Disponíveis</option>
+    <option value="indisponivel" {{ 'selected' if f.disp == 'indisponivel' }}>Indisponíveis</option>
+  </select>
+  <select name="ordem" aria-label="Ordenar">
+    {% for v, n in [('titulo','Título'),('autor','Autor'),('ano','Mais recentes'),('popularidade','Mais procurados')] %}
+      <option value="{{ v }}" {{ 'selected' if f.ordem == v }}>Ordenar: {{ n }}</option>
+    {% endfor %}
+  </select>
+  <input type="hidden" name="visao" value="{{ visao }}">
+  <button class="btn ouro">Filtrar</button>
+  <span class="alterna">
+    <a class="{{ 'on' if visao == 'grade' }}" href="{{ url_for('catalogo', **dict(f, visao='grade', pagina=pagina)) }}">Grade</a>
+    <a class="{{ 'on' if visao == 'lista' }}" href="{{ url_for('catalogo', **dict(f, visao='lista', pagina=pagina)) }}">Lista</a>
+  </span>
+</form>
+
+{% if visao == 'lista' %}
+<div class="cartao">
+<table class="tabela">
+  <thead><tr><th>Título</th><th>Autor</th><th>Gênero</th><th>Ano</th><th>Local</th><th>Situação</th></tr></thead>
+  <tbody>
+  {% for l in livros %}
+    <tr><td><a href="{{ url_for('detalhe', livro_id=l.id) }}">{{ l.titulo }}</a></td><td>{{ l.autor }}</td><td>{{ l.genero }}</td>
+      <td>{{ l.ano if l.ano and l.ano > 0 else (l.ano|abs ~ ' a.C.' if l.ano else '—') }}</td><td>{{ l.local }}</td><td>{{ selo_disp(l) }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<div class="grade">
+  {% for l in livros %}
+  <a class="livro" href="{{ url_for('detalhe', livro_id=l.id) }}">
+    {{ capa(l) }}
+    <b>{{ l.titulo }}</b>
+    <span class="mudo">{{ l.autor }}</span>
+    <span>{{ selo_disp(l) }}</span>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+{% if not livros %}<p class="mudo">Nenhuma obra corresponde aos filtros.</p>{% endif %}
+
+{% if paginas > 1 %}
+<nav class="paginacao" aria-label="Páginas">
+  {% for p in range(1, paginas + 1) %}
+    <a class="{{ 'on' if p == pagina }}" href="{{ url_for('catalogo', **dict(f, visao=visao, pagina=p)) }}">{{ p }}</a>
+  {% endfor %}
+</nav>
+{% endif %}
+{% endblock %}

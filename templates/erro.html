@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block titulo %}Erro {{ codigo }}{% endblock %}
+{% block conteudo %}
+<section class="cartao"><p class="sobretitulo">ERRO {{ codigo }}</p><h1>{{ msg }}</h1>
+<a class="btn ouro" href="{{ url_for('inicio') }}">Voltar ao início</a></section>
+{% endblock %}
+{% block publico %}
+<div class="login"><section class="login-caixa"><h2>Erro {{ codigo }}</h2><p>{{ msg }}</p><a class="btn ouro" href="{{ url_for('login') }}">Entrar</a></section></div>
+{% endblock %}

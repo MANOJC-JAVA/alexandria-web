@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% from "_macros.html" import carrossel, selo_status with context %}
+{% block titulo %}Início{% endblock %}
+{% block conteudo %}
+<header class="topo">
+  <div>
+    <p class="sobretitulo">INÍCIO</p>
+    <h1>Olá, {{ usuario.split()[0] }}</h1>
+  </div>
+  {% if perfil == 'equipe' %}
+  <div class="acoes">
+    <a class="btn ouro" href="{{ url_for('emprestimos') }}">Novo empréstimo</a>
+    <a class="btn" href="{{ url_for('acervo') }}">Cadastrar obra</a>
+  </div>
+  {% endif %}
+</header>
+
+{% if perfil == 'equipe' %}
+<section class="kpis">
+  <div class="kpi"><small>Exemplares no acervo</small><b>{{ kpi.acervo }}</b><span>{{ kpi.titulos }} títulos</span></div>
+  <div class="kpi"><small>Empréstimos ativos</small><b>{{ kpi.emprestimos }}</b><span>{{ kpi.no_prazo }}% no prazo</span></div>
+  <div class="kpi {{ 'alerta' if kpi.atrasados }}"><small>Em atraso</small><b>{{ kpi.atrasados }}</b><span>devoluções pendentes</span></div>
+  <div class="kpi"><small>Leitores ativos</small><b>{{ kpi.leitores }}</b><span>{{ kpi.reservas }} reservas abertas</span></div>
+</section>
+{% endif %}
+
+<section class="cartao">
+  <div class="cartao-topo">
+    <div>
+      <p class="sobretitulo">INTELIGÊNCIA ARTIFICIAL</p>
+      <h2>{% if pergunta %}Resultados para “{{ pergunta }}”{% else %}Sugestões de leitura{% endif %}</h2>
+    </div>
+    {% if perfil == 'equipe' %}
+    <form method="get" class="linha">
+      <label>Sugestões para
+        <select name="leitor" onchange="this.form.submit()">
+          {% for l in leitores %}<option value="{{ l.id }}" {{ 'selected' if l.id == leitor_id and not pergunta }}>{{ l.nome }}</option>{% endfor %}
+        </select>
+      </label>
+    </form>
+    {% endif %}
+  </div>
+  <form method="get" class="pergunta">
+    <input type="search" name="pergunta" value="{{ pergunta }}" placeholder="Pergunte à IA: quero algo de mistério, livros sobre poder..." aria-label="Pergunta para a IA">
+    <button class="btn ouro" type="submit">Perguntar à IA</button>
+  </form>
+  <div class="chips">
+    {% for s in sugestoes %}<a class="chip" href="{{ url_for('inicio', pergunta=s) }}">{{ s }}</a>{% endfor %}
+    {% if pergunta %}<a class="chip limpar" href="{{ url_for('inicio') }}">Voltar às sugestões por histórico</a>{% endif %}
+  </div>
+  {% if entendidos %}<p class="mudo">A IA entendeu: {{ entendidos | join(', ') }}</p>{% endif %}
+  {{ carrossel(recs) }}
+</section>
+
+{% if perfil == 'equipe' %}
+<section class="cartao">
+  <h2>Devoluções para hoje e atrasadas</h2>
+  {% if devolucoes %}
+  <table class="tabela">
+    <thead><tr><th>Livro</th><th>Leitor</th><th>Previsto</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for e in devolucoes %}
+      <tr><td>{{ e.titulo }}</td><td>{{ e.nome }}</td><td>{{ e.previsto | br }}</td><td>{{ selo_status(e) }}</td>
+        <td><form method="post" action="{{ url_for('devolver', emp_id=e.id) }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn mini">Devolver</button></form></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="mudo">Nenhuma devolução pendente para hoje.</p>{% endif %}
+</section>
+{% else %}
+<section class="duas">
+  <div class="cartao">
+    <h2>Meus empréstimos</h2>
+    {% for e in meus %}
+      <p class="item"><b>{{ e.titulo }}</b> — devolver até {{ e.previsto | br }} {{ selo_status(e) }}</p>
+    {% else %}<p class="mudo">Você não tem empréstimos em andamento.</p>{% endfor %}
+  </div>
+  <div class="cartao">
+    <h2>Minhas reservas</h2>
+    {% for r in minhas_res %}
+      <p class="item"><b>{{ r.titulo }}</b> <span class="selo {{ 'verde' if r.estado == 'PRONTA' else 'ouro' }}">{{ r.estado }}</span></p>
+    {% else %}<p class="mudo">Nenhuma reserva ativa.</p>{% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

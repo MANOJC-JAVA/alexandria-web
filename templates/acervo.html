@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "_macros.html" import capa with context %}
+{% block titulo %}Acervo{% endblock %}
+{% block conteudo %}
+<header class="topo"><div><p class="sobretitulo">ACERVO</p><h1>Cadastrar obra</h1></div></header>
+
+<section class="duas cadastro">
+  <form method="post" class="cartao form-grade" id="form-livro">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label class="largo">Título *<input name="titulo" value="{{ d.titulo }}" required maxlength="160" data-previa="titulo"></label>
+    <label>Autor *<input name="autor" value="{{ d.autor }}" required maxlength="120" data-previa="autor"></label>
+    <label>Gênero *<input name="genero" value="{{ d.genero }}" required list="generos"></label>
+    <datalist id="generos">{% for g in generos %}<option value="{{ g }}">{% endfor %}</datalist>
+    <label>Ano<input name="ano" type="number" value="{{ d.ano }}" min="-3000" max="2100"></label>
+    <label>ISBN<input name="isbn" value="{{ d.isbn }}" maxlength="20"></label>
+    <label>Localização<input name="local" value="{{ d.local }}" placeholder="Estante A-1"></label>
+    <label>Exemplares<input name="quantidade" type="number" value="{{ d.quantidade or 1 }}" min="1" max="99"></label>
+    <label class="largo">Sinopse<textarea name="sinopse" rows="3">{{ d.sinopse }}</textarea></label>
+    <label class="largo">Palavras-chave (usadas pela IA)<input name="palavras" value="{{ d.palavras }}" placeholder="aventura amizade viagem"></label>
+    <fieldset class="largo tons">
+      <legend>Cor da capa</legend>
+      {% for t in tons %}
+        <label class="tom tom-{{ t|lower }}"><input type="radio" name="tom" value="{{ t }}" {{ 'checked' if (d.tom or 'GOLD') == t }}><span class="sr">{{ t }}</span></label>
+      {% endfor %}
+    </fieldset>
+    <label class="check"><input type="checkbox" name="especial" value="1" {{ 'checked' if d.especial }}> Obra do Cofre Especial</label>
+    <button class="btn ouro largo">Gravar no acervo</button>
+  </form>
+  <aside class="cartao previa">
+    <p class="sobretitulo">PRÉ-VISUALIZAÇÃO</p>
+    {{ capa({'titulo': d.titulo or 'Título da obra', 'autor': d.autor or 'Autor', 'tom': d.tom or 'GOLD'}, 'grande') }}
+    <h3>Últimas obras cadastradas</h3>
+    {% for l in recentes %}<p class="item"><a href="{{ url_for('detalhe', livro_id=l.id) }}">{{ l.titulo }}</a> <span class="mudo">— {{ l.autor }}</span></p>{% endfor %}
+  </aside>
+</section>
+{% endblock %}

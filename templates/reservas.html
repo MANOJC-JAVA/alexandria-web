@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block titulo %}Reservas{% endblock %}
+{% block conteudo %}
+<header class="topo"><div><p class="sobretitulo">FILA DE ESPERA</p><h1>{{ 'Minhas reservas' if perfil == 'leitor' else 'Reservas' }}</h1></div></header>
+
+<section class="cartao">
+  <h2>Nova reserva</h2>
+  <form method="post" class="form-grade">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    {% if perfil == 'equipe' %}
+    <label>Leitor
+      <select name="pessoa" required><option value="">Selecione...</option>
+        {% for p in leitores %}<option value="{{ p.id }}">{{ p.nome }}</option>{% endfor %}
+      </select>
+    </label>
+    {% endif %}
+    <label>Livro
+      <select name="livro" required><option value="">Selecione...</option>
+        {% for l in livros %}<option value="{{ l.id }}">{{ l.titulo }}{{ ' (indisponível)' if l.disponiveis == 0 }}</option>{% endfor %}
+      </select>
+    </label>
+    <button class="btn ouro">Reservar</button>
+  </form>
+  <p class="mudo regra">Quando o livro é devolvido, a primeira reserva da fila passa de AGUARDANDO para PRONTA.</p>
+</section>
+
+<section class="cartao">
+  <table class="tabela">
+    <thead><tr><th>Data</th><th>Livro</th>{% if perfil == 'equipe' %}<th>Leitor</th>{% endif %}<th>Estado</th><th></th></tr></thead>
+    <tbody>
+    {% for r in reservas %}
+      <tr><td>{{ r.data | br }}</td><td>{{ r.titulo }}</td>{% if perfil == 'equipe' %}<td>{{ r.nome }}</td>{% endif %}
+        <td><span class="selo {{ {'AGUARDANDO':'ouro','PRONTA':'verde','ATENDIDA':'cinza','CANCELADA':'vermelho'}[r.estado] }}">{{ r.estado }}</span></td>
+        <td>{% if r.estado in ('AGUARDANDO','PRONTA') %}
+          <form method="post" action="{{ url_for('cancelar_reserva', res_id=r.id) }}" data-confirmar="Cancelar esta reserva?"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn mini">Cancelar</button></form>
+        {% endif %}</td></tr>
+    {% else %}<tr><td colspan="5" class="mudo">Nenhuma reserva.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

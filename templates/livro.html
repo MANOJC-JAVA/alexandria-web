@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "_macros.html" import capa, selo_disp, carrossel with context %}
+{% block titulo %}{{ l.titulo }}{% endblock %}
+{% block conteudo %}
+<a class="voltar" href="{{ voltar_url }}">← Voltar ao catálogo</a>
+<section class="detalhe cartao">
+  {{ capa(l, 'grande') }}
+  <div>
+    <p class="sobretitulo">{{ l.genero | upper }}</p>
+    <h1>{{ l.titulo }}</h1>
+    <p class="autor">{{ l.autor }}</p>
+    <p>{{ selo_disp(l) }} {% if fila %}<span class="selo cinza">{{ fila }} reserva(s) na fila</span>{% endif %}</p>
+    <p class="sinopse">{{ l.sinopse }}</p>
+    <dl class="ficha">
+      <dt>Ano</dt><dd>{{ l.ano if l.ano and l.ano > 0 else (l.ano|abs ~ ' a.C.' if l.ano else '—') }}</dd>
+      <dt>ISBN</dt><dd>{{ l.isbn or '—' }}</dd>
+      <dt>Localização</dt><dd>{{ l.local }}</dd>
+      <dt>Exemplares</dt><dd>{{ l.disponiveis }} de {{ l.total }} disponíveis</dd>
+    </dl>
+    <div class="acoes">
+      {% if perfil == 'equipe' and l.disponiveis > 0 %}
+        <a class="btn ouro" href="{{ url_for('emprestimos', livro=l.id) }}">Realizar empréstimo</a>
+      {% endif %}
+      {% if l.disponiveis == 0 %}
+      <form method="post" action="{{ url_for('reservas') }}" class="linha">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <input type="hidden" name="livro" value="{{ l.id }}">
+        {% if perfil == 'equipe' %}
+        <select name="pessoa" required aria-label="Leitor">
+          <option value="">Reservar para...</option>
+          {% for p in leitores %}<option value="{{ p.id }}">{{ p.nome }} ({{ p.tipo }})</option>{% endfor %}
+        </select>
+        {% endif %}
+        <button class="btn ouro">Reservar</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</section>
+<section class="cartao">
+  <p class="sobretitulo">INTELIGÊNCIA ARTIFICIAL</p>
+  <h2>Quem leu esta obra também pode gostar</h2>
+  {{ carrossel(parecidos) }}
+</section>
+{% endblock %}

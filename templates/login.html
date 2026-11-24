@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% from "_macros.html" import brasao %}
+{% block titulo %}Entrar{% endblock %}
+{% block publico %}
+<div class="login">
+  <section class="login-arte">
+    <p class="sobretitulo">SISTEMA DE GESTÃO DE BIBLIOTECA</p>
+    <h1>ALEXANDRIA</h1>
+    <p>Acervo, empréstimos, reservas e recomendações com inteligência artificial, agora direto no navegador.</p>
+  </section>
+  <form class="login-caixa" method="post">
+    <div class="marca-login">
+      {{ brasao() }}
+      <h2>A L E X A N D R I A</h2>
+      <small>S I S T E M A &nbsp; D E &nbsp; G E S T Ã O &nbsp; D E &nbsp; B I B L I O T E C A</small>
+    </div>
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% for cat, m in msgs %}<div class="aviso {{ cat }}" role="alert">{{ m }}</div>{% endfor %}
+    {% endwith %}
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>E-mail<input type="email" name="email" required autofocus autocomplete="username"></label>
+    <label>Senha<input type="password" name="senha" required autocomplete="current-password"></label>
+    <button class="btn ouro" type="submit">Entrar</button>
+    <p class="dica">Equipe: e-mail e senha da conta. Leitores: e-mail cadastrado e matrícula como senha.</p>
+  </form>
+</div>
+{% endblock %}
