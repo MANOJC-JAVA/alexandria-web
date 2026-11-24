@@ -1,9 +1,7 @@
-"""
-Camada de acesso ao banco de dados (SQLite).
+"""Acesso ao banco de dados (SQLite).
 
-O arquivo do banco fica em  instance/alexandria.db  e é criado automaticamente
-na primeira execução, com o modelo de schema.sql e os dados de exemplo de
-dados_exemplo.sql.
+O banco é um arquivo só, em instance/alexandria.db. Na primeira vez que o sistema
+roda, ele é criado com as tabelas do schema.sql e os dados de exemplo do dados_exemplo.sql.
 """
 import os
 import sqlite3
@@ -13,7 +11,7 @@ from werkzeug.security import generate_password_hash
 
 PASTA = os.path.dirname(os.path.abspath(__file__))
 
-# Contas da equipe criadas na primeira execução (as mesmas da versão desktop).
+# Contas da equipe criadas na primeira vez que o sistema roda (as mesmas da versão desktop).
 EQUIPE_PADRAO = [
     ("augusto.bento@alexandria.com.br", "Adm1958", "Augusto Bento", "Administrador Geral"),
     ("karine.varela@alexandria.com.br", "Adm2608", "Karine Varela", "Bibliotecária Chefe"),
@@ -21,27 +19,31 @@ EQUIPE_PADRAO = [
 
 
 def conectar(caminho: str) -> sqlite3.Connection:
+    """Abre a conexão com o SQLite, deixa ler as colunas pelo nome e liga as chaves estrangeiras."""
     con = sqlite3.connect(caminho)
-    con.row_factory = sqlite3.Row          # linhas acessíveis por nome de coluna
+    con.row_factory = sqlite3.Row          # deixa usar linha["titulo"] em vez de linha[1]
     con.execute("PRAGMA foreign_keys = ON")
     return con
 
 
 def get_db() -> sqlite3.Connection:
-    """Uma conexão por requisição, guardada no objeto g do Flask."""
+    """Uma conexão por acesso, guardada no "g" do Flask para não abrir várias vezes."""
     if "db" not in g:
         g.db = conectar(current_app.config["BANCO"])
     return g.db
 
 
 def fechar_db(_erro=None) -> None:
+    """Fecha a conexão quando o acesso termina."""
     db = g.pop("db", None)
     if db is not None:
         db.close()
 
 
 def criar_banco(caminho: str, com_exemplos: bool = True) -> None:
-    """Cria as tabelas e, se o banco estiver vazio, carrega os dados de exemplo."""
+    """Cria as tabelas (se ainda não existirem) e, se o banco estiver vazio,
+    carrega os dados de exemplo e as contas da equipe.
+    """
     pasta = os.path.dirname(caminho)
     if pasta:
         os.makedirs(pasta, exist_ok=True)
@@ -63,5 +65,6 @@ def criar_banco(caminho: str, com_exemplos: bool = True) -> None:
 
 
 def iniciar_app(app) -> None:
+    """Liga o banco ao Flask: fecha a conexão sozinho no fim de cada acesso e cria o banco se precisar."""
     app.teardown_appcontext(fechar_db)
     criar_banco(app.config["BANCO"], app.config.get("CARREGAR_EXEMPLOS", True))

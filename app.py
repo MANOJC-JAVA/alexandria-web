@@ -1,8 +1,9 @@
-"""
-Alexandria Web - Sistema de Gestão de Biblioteca
-Aplicação Flask: rotas (controladores) que ligam as páginas às regras de negócio.
+"""Alexandria Web - arquivo principal.
 
-Executar:  python app.py   e abrir  http://127.0.0.1:5000
+Aqui ficam as rotas do Flask: cada função recebe o pedido do navegador,
+chama as regras de negócio (regras.py) ou a IA (ia.py) e devolve a página pronta.
+
+Para rodar: python app.py e abrir http://127.0.0.1:5000 no navegador.
 """
 import csv
 import io
@@ -25,6 +26,7 @@ PERGUNTAS_SUGERIDAS = ["distopia e poder", "aprender a programar", "aventura e f
 
 
 def criar_app(config: dict | None = None) -> Flask:
+    """Monta a aplicação: chave da sessão, caminho do banco e todas as rotas."""
     app = Flask(__name__, instance_relative_config=True)
     app.config.update(
         SECRET_KEY=os.environ.get("ALEXANDRIA_CHAVE") or secrets.token_hex(32),
@@ -41,13 +43,19 @@ def criar_app(config: dict | None = None) -> Flask:
 
 # ============================================================ segurança / sessão
 def login_obrigatorio(perfil=None):
-    """Decorador: exige sessão autenticada (UC01) e, opcionalmente, um perfil."""
+    """Decorador que protege as páginas.
+
+    Quem não estiver logado volta para o login. Se a página for só da equipe,
+    o leitor recebe erro 403 em vez de conseguir entrar pelo endereço.
+    """
     def deco(fn):
+        """Recebe a função da rota e devolve ela já "embrulhada" com a verificação."""
         @wraps(fn)
         def interno(*a, **kw):
+            """É o que roda de verdade a cada acesso: confere login, conta ativa e perfil."""
             if "perfil" not in session:
                 return redirect(url_for("login", proximo=request.path))
-            # a conta pode ter sido inativada ou removida depois do login
+            # a conta pode ter sido inativada (ou apagada) depois que a pessoa entrou
             tabela = "funcionarios" if session["perfil"] == "equipe" else "pessoas"
             conta = banco.get_db().execute(f"SELECT ativo FROM {tabela} WHERE id = ?", (session.get("id"),)).fetchone()
             if conta is None or not conta["ativo"]:
@@ -62,12 +70,18 @@ def login_obrigatorio(perfil=None):
 
 
 def token_csrf() -> str:
+    """Pega o token de segurança da sessão (ou cria um, se for o primeiro acesso)."""
     if "csrf" not in session:
         session["csrf"] = secrets.token_hex(16)
     return session["csrf"]
 
 
 def checar_csrf():
+    """Roda antes de todo POST.
+
+    Se o formulário não trouxer o mesmo token que está na sessão, a gente recusa.
+    Isso impede que outro site envie formulários em nome do usuário (ataque CSRF).
+    """
     if request.method == "POST":
         enviado = request.form.get("csrf", "")
         esperado = session.get("csrf", "")
@@ -76,12 +90,12 @@ def checar_csrf():
 
 
 def iguais(a: str, b: str) -> bool:
-    """Comparação em tempo constante (aceita acentos)."""
+    """Compara dois textos sem deixar o tempo da comparação "vazar" informação. Funciona com acento."""
     return compare_digest((a or "").encode("utf-8"), (b or "").encode("utf-8"))
 
 
 def destino_seguro(url, padrao):
-    """Só aceita endereços do próprio sistema (evita redirecionar para outro site)."""
+    """Só deixa redirecionar para páginas do próprio sistema, nunca para um site de fora."""
     if url and url.startswith(request.host_url):
         url = url[len(request.host_url) - 1:]
     if url and url.startswith("/") and not url.startswith("//") and "\\" not in url:
@@ -90,19 +104,23 @@ def destino_seguro(url, padrao):
 
 
 def voltar(padrao_endpoint):
+    """Volta para a página de onde o usuário veio (ou para a página padrão, se não der)."""
     return redirect(destino_seguro(request.referrer, url_for(padrao_endpoint)))
 
 
 def motor(db) -> MotorIA:
+    """Cria o motor de IA com os livros que estão no banco agora."""
     livros = [dict(r) for r in db.execute("SELECT * FROM livros ORDER BY id")]
     return MotorIA(livros)
 
 
 def resultado(erro, sucesso):
+    """Mostra a mensagem certa na tela: vermelha se deu erro, verde se deu certo."""
     flash(erro or sucesso, "erro" if erro else "ok")
 
 
 def para_data(texto):
+    """Transforma a data que vem do formulário (AAAA-MM-DD) em data do Python. Se vier vazia ou errada, devolve None."""
     try:
         return date.fromisoformat(texto) if texto else None
     except ValueError:
@@ -111,16 +129,18 @@ def para_data(texto):
 
 # ============================================================ rotas
 def registrar_rotas(app: Flask) -> None:
+    """Cadastra todas as páginas do sistema no Flask."""
     app.before_request(checar_csrf)
 
     @app.context_processor
     def globais():
+        """Coisas que todas as páginas usam: nome de quem está logado, perfil, token do formulário..."""
         return {"csrf": token_csrf(), "usuario": session.get("nome"), "perfil": session.get("perfil"),
                 "cargo": session.get("cargo"), "status_emp": regras.status_emprestimo, "hoje": regras.hoje()}
 
     @app.template_filter("br")
     def data_br(valor):
-        """Mostra AAAA-MM-DD como dd/MM/aaaa."""
+        """Mostra as datas no formato brasileiro (dd/mm/aaaa) nas páginas."""
         if not valor:
             return "—"
         a, m, d = str(valor)[:10].split("-")
@@ -130,6 +150,11 @@ def registrar_rotas(app: Flask) -> None:
     @app.route("/", methods=["GET", "POST"])
     @app.route("/login", methods=["GET", "POST"])
     def login():
+        """Tela de login (UC01 e UC17).
+
+        Primeiro tenta como funcionário (e-mail + senha). Se não for, tenta como
+        leitor, que entra com o e-mail e usa a matrícula como senha.
+        """
         if request.method == "POST":
             email = request.form.get("email", "").strip().lower()
             senha = request.form.get("senha", "")
@@ -149,6 +174,7 @@ def registrar_rotas(app: Flask) -> None:
 
     @app.route("/sair")
     def sair():
+        """Encerra a sessão e manda de volta para o login (UC16)."""
         session.clear()
         flash("Sessão encerrada.", "ok")
         return redirect(url_for("login"))
@@ -157,11 +183,16 @@ def registrar_rotas(app: Flask) -> None:
     @app.route("/inicio")
     @login_obrigatorio()
     def inicio():
+        """Página inicial (UC02, UC13 e UC14).
+
+        A equipe vê os números da biblioteca e pode escolher de qual leitor quer ver as
+        sugestões da IA. O leitor vê só as sugestões dele, os empréstimos e as reservas.
+        """
         db = banco.get_db()
         leitores = db.execute("""SELECT id, nome FROM pessoas WHERE tipo IN ('Estudante','Professor')
                                  AND ativo = 1 ORDER BY nome""").fetchall()
         if session["perfil"] == "leitor":
-            leitor_id = session["id"]           # o leitor só vê as próprias sugestões
+            leitor_id = session["id"]           # leitor só vê as sugestões dele
         else:
             leitor_id = request.args.get("leitor", type=int) or (leitores[0]["id"] if leitores else None)
         pergunta = request.args.get("pergunta", "").strip()
@@ -185,6 +216,7 @@ def registrar_rotas(app: Flask) -> None:
     @app.route("/catalogo")
     @login_obrigatorio()
     def catalogo():
+        """Catálogo de livros com busca, filtros, ordem, visão em grade ou lista e 8 livros por página (UC03)."""
         db = banco.get_db()
         f = {k: request.args.get(k, "") for k in ("busca", "genero", "disp", "ordem")}
         livros, total, pagina, paginas = regras.catalogo(
@@ -197,6 +229,7 @@ def registrar_rotas(app: Flask) -> None:
     @app.route("/livro/<int:livro_id>")
     @login_obrigatorio()
     def detalhe(livro_id):
+        """Página de um livro: dados completos, fila de reservas e livros parecidos indicados pela IA (UC04)."""
         db = banco.get_db()
         l = regras.livro(db, livro_id) or abort(404)
         fila = db.execute("SELECT COUNT(*) FROM reservas WHERE livro_id = ? AND estado = 'AGUARDANDO'",
@@ -213,6 +246,7 @@ def registrar_rotas(app: Flask) -> None:
     @app.route("/emprestimos", methods=["GET", "POST"])
     @login_obrigatorio("equipe")
     def emprestimos():
+        """Tela de empréstimos: o formulário para emprestar e a lista do que ainda não voltou (UC06)."""
         db = banco.get_db()
         if request.method == "POST":
             erro = regras.emprestar(db, request.form.get("livro", type=int), request.form.get("pessoa", type=int),
@@ -233,12 +267,14 @@ def registrar_rotas(app: Flask) -> None:
     @app.post("/emprestimos/<int:emp_id>/devolver")
     @login_obrigatorio("equipe")
     def devolver(emp_id):
+        """Botão "Devolver" da lista de empréstimos (UC07)."""
         resultado(regras.devolver(banco.get_db(), emp_id), "Devolução registrada.")
         return voltar("emprestimos")
 
     @app.post("/emprestimos/<int:emp_id>/renovar")
     @login_obrigatorio("equipe")
     def renovar(emp_id):
+        """Botão "Renovar". As regras (máximo de 2 vezes etc.) ficam em regras.renovar (UC08)."""
         resultado(regras.renovar(banco.get_db(), emp_id), "Empréstimo renovado.")
         return voltar("emprestimos")
 
@@ -246,6 +282,7 @@ def registrar_rotas(app: Flask) -> None:
     @app.route("/reservas", methods=["GET", "POST"])
     @login_obrigatorio()
     def reservas():
+        """Tela de reservas (UC09). O leitor só enxerga e cria reservas no próprio nome."""
         db = banco.get_db()
         leitor = session["perfil"] == "leitor"
         if request.method == "POST":
@@ -263,6 +300,7 @@ def registrar_rotas(app: Flask) -> None:
     @app.post("/reservas/<int:res_id>/cancelar")
     @login_obrigatorio()
     def cancelar_reserva(res_id):
+        """Cancela uma reserva (UC10). Se for leitor, só consegue cancelar as dele."""
         dono = session["id"] if session["perfil"] == "leitor" else None
         resultado(regras.cancelar_reserva(banco.get_db(), res_id, dono), "Reserva cancelada.")
         return voltar("reservas")
@@ -271,6 +309,7 @@ def registrar_rotas(app: Flask) -> None:
     @app.route("/acervo", methods=["GET", "POST"])
     @login_obrigatorio("equipe")
     def acervo():
+        """Cadastro de livro novo (UC05). Se faltar algum campo, a tela volta com o que já foi digitado."""
         db = banco.get_db()
         dados = {}
         if request.method == "POST":
@@ -287,6 +326,7 @@ def registrar_rotas(app: Flask) -> None:
     @app.route("/usuarios", methods=["GET", "POST"])
     @login_obrigatorio("equipe")
     def usuarios():
+        """Tela de usuários (UC11): lista com busca e o painel do lado para incluir ou editar."""
         db = banco.get_db()
         if request.method == "POST":
             pid, erro = regras.salvar_pessoa(db, request.form.to_dict(), request.form.get("id", type=int))
@@ -312,6 +352,7 @@ def registrar_rotas(app: Flask) -> None:
     @app.post("/usuarios/<int:pid>/ativo")
     @login_obrigatorio("equipe")
     def alternar_ativo(pid):
+        """Botão "Ativar/Inativar" do cadastro."""
         regras.alternar_ativo(banco.get_db(), pid)
         flash("Situação do cadastro alterada.", "ok")
         return redirect(url_for("usuarios", ver=pid))
@@ -319,6 +360,7 @@ def registrar_rotas(app: Flask) -> None:
     @app.post("/usuarios/<int:pid>/remover")
     @login_obrigatorio("equipe")
     def remover(pid):
+        """Botão "Remover". Não deixa apagar quem tem empréstimo; nesse caso o certo é inativar."""
         erro = regras.remover_pessoa(banco.get_db(), pid)
         resultado(erro, "Usuário removido.")
         return redirect(url_for("usuarios", ver=pid) if erro else url_for("usuarios"))
@@ -326,37 +368,46 @@ def registrar_rotas(app: Flask) -> None:
     @app.route("/usuarios.csv")
     @login_obrigatorio("equipe")
     def exportar_csv():
+        """Baixa a lista de usuários em CSV para abrir no Excel (UC12).
+
+        Usa ponto e vírgula e o caractere BOM no começo, senão o Excel em português
+        bagunça as colunas e os acentos.
+        """
         saida = io.StringIO()
         w = csv.writer(saida, delimiter=";")
         w.writerow(["id", "nome", "email", "telefone", "tipo", "matricula", "ativo", "desde"])
         def celula(v):
-            # impede que o Excel interprete um texto como fórmula (injeção de CSV)
+            """Se o texto começar com = + - ou @, coloca um apóstrofo antes para o Excel não tratar como fórmula."""
             v = "" if v is None else str(v)
             return "'" + v if v[:1] in ("=", "+", "-", "@") else v
         for p in banco.get_db().execute("SELECT * FROM pessoas ORDER BY nome"):
             w.writerow([celula(x) for x in (p["id"], p["nome"], p["email"], p["telefone"], p["tipo"],
                                             p["matricula"], "sim" if p["ativo"] else "não", p["desde"])])
-        return Response("﻿" + saida.getvalue(), mimetype="text/csv",
+        return Response("\ufeff" + saida.getvalue(), mimetype="text/csv",
                         headers={"Content-Disposition": "attachment; filename=usuarios_alexandria.csv"})
 
     # ---------------------------------------------------- UC15
     @app.route("/relatorios")
     @login_obrigatorio("equipe")
     def relatorios():
+        """Página de relatórios com os indicadores e os gráficos de barras (UC15)."""
         db = banco.get_db()
         return render_template("relatorios.html", r=regras.relatorios(db), kpi=regras.indicadores(db))
 
     @app.errorhandler(400)
     def requisicao_invalida(_e):
+        """Quando o formulário expira (ex.: o servidor reiniciou), avisa e volta em vez de mostrar um erro feio."""
         flash("O formulário expirou. Tente de novo.", "erro")
         return redirect(destino_seguro(request.referrer, url_for("login")))
 
     @app.errorhandler(403)
     def proibido(_e):
+        """Erro 403: o perfil não pode abrir essa página."""
         return render_template("erro.html", codigo=403, msg="Seu perfil não tem acesso a esta página."), 403
 
     @app.errorhandler(404)
     def nao_achou(_e):
+        """Erro 404: a página não existe."""
         return render_template("erro.html", codigo=404, msg="Página não encontrada."), 404
 
 

@@ -1,16 +1,16 @@
-"""
-Motor de recomendação de livros (Inteligência Artificial do Alexandria).
+"""Motor de recomendação do Alexandria (a parte de Inteligência Artificial).
 
-Versão em Python do MotorRecomendacao.java da versão desktop. Usa TF-IDF e
-similaridade do cosseno, sem bibliotecas externas e sem internet:
+É a versão em Python do MotorRecomendacao.java do sistema desktop. Não usa
+nenhuma biblioteca de fora nem internet. A ideia, resumindo:
 
- 1. Cada obra vira um documento: gênero (peso 2) + autor (peso 1,5, termo único)
-    + palavras-chave temáticas (peso 1).
- 2. O texto é normalizado (minúsculas, sem acento, sem stopwords, plural simples)
-    e transformado em um vetor TF-IDF (TF = frequência; IDF = raridade no acervo).
- 3. O perfil do leitor é a soma dos vetores das obras que ele já pegou emprestado.
- 4. A afinidade é a similaridade do cosseno entre o perfil e cada obra (0 a 1).
- 5. Os termos de maior peso em comum viram a justificativa mostrada ao usuário.
+ 1. Cada livro vira um "documento" com o gênero (peso 2), o autor (peso 1,5)
+    e as palavras-chave (peso 1).
+ 2. Esse texto é limpo (minúsculas, sem acento, sem palavras como "de" e "o",
+    sem plural) e vira um vetor TF-IDF: termos que aparecem muito no livro e
+    pouco no resto do acervo ganham mais peso.
+ 3. O gosto do leitor é a soma dos vetores dos livros que ele já pegou.
+ 4. A afinidade é a similaridade do cosseno entre o gosto do leitor e cada livro.
+ 5. Os termos em comum que mais pesaram viram a explicação mostrada na tela.
 """
 import math
 import re
@@ -24,8 +24,8 @@ preciso tem ter ser me eu meu minha queria procuro buscar indicar indica aprende
 obra obras tipo coisa muito bem
 """.split())
 
-# Conceitos relacionados: ajudam a entender perguntas em linguagem natural.
-# Formato: (palavras que podem aparecer na pergunta, termos equivalentes no acervo)
+# Conceitos relacionados: ajudam a IA a entender perguntas escritas do jeito que a pessoa fala.
+# Cada item é: (palavras que podem aparecer na pergunta, termos parecidos que existem no acervo)
 CONCEITOS = [
     ("programar,programador,programacao,computador,computacao,codigo,software,dev,tecnologia,ti",
      "programacao,software,codigo,computacao,algoritmos,engenharia"),
@@ -55,11 +55,12 @@ CONCEITOS = [
     ("epico,epopeia,heroi,herois,mitologia,mito,deuses", "epico,herois,deuses,guerra"),
 ]
 
-AFINIDADE_MINIMA = 0.10   # cosseno mínimo para considerar uma obra parecida
+AFINIDADE_MINIMA = 0.10   # abaixo disso o livro não é considerado parecido
 
 
 @dataclass
 class Recomendacao:
+    """Uma sugestão da IA: o livro, a afinidade (de 0 a 1), o selo que aparece no card e o motivo."""
     livro: dict
     afinidade: float        # 0..1, já calibrada para exibição
     selo: str
@@ -67,11 +68,12 @@ class Recomendacao:
 
 
 def sem_acento(s: str) -> str:
+    """Tira os acentos ("ação" vira "acao") para "ficção" e "ficcao" contarem como a mesma palavra."""
     return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
 
 
 def radical(t: str) -> str:
-    """Simplifica plurais: 'livros' -> 'livro', 'revolucoes' -> 'revolucao'."""
+    """Tira o plural de um jeito simples: "livros" vira "livro" e "revoluções" vira "revolucao"."""
     if len(t) > 4 and t.endswith("oes"):
         return t[:-3] + "ao"
     if len(t) > 3 and t.endswith("s") and not t.endswith("ss"):
@@ -80,27 +82,31 @@ def radical(t: str) -> str:
 
 
 def chave_autor(autor: str) -> str:
+    """Junta o nome do autor num termo só ("George Orwell" vira "autor_george_orwell")."""
     return "autor_" + re.sub(r"[^a-z0-9]+", "_", sem_acento(autor.lower()))
 
 
 def normalizar(v: dict) -> dict:
+    """Divide o vetor pelo tamanho dele. Assim o cosseno vira só uma soma de multiplicações."""
     norma = math.sqrt(sum(x * x for x in v.values()))
     return {k: x / norma for k, x in v.items()} if norma else v
 
 
 def cosseno(a: dict, b: dict) -> float:
-    """Similaridade do cosseno entre vetores já normalizados (= produto escalar)."""
+    """Similaridade do cosseno entre dois vetores já normalizados: 0 = nada a ver, 1 = idênticos."""
     menor, maior = (a, b) if len(a) <= len(b) else (b, a)
     return sum(x * maior[k] for k, x in menor.items() if k in maior)
 
 
 def calibrar(cos: float) -> float:
-    """Converte o cosseno (valores baixos, ex.: 0,35) em uma porcentagem mais fácil de ler."""
+    """O cosseno costuma dar números baixos (tipo 0,35); aqui ele vira uma porcentagem mais fácil de entender."""
     return min(0.99, 1.0 - math.exp(-3.0 * cos))
 
 
 class MotorIA:
+    """O motor em si: aprende com o acervo quando é criado e depois responde as recomendações."""
     def __init__(self, livros: list):
+        """Recebe os livros do banco e já treina o modelo na hora."""
         self.acervo = list(livros)
         self.exibicao = {}               # radical -> palavra original
         self.conceitos = {}              # radical da pergunta -> termos do acervo
@@ -113,6 +119,7 @@ class MotorIA:
 
     # ---- pré-processamento --------------------------------------------------
     def tokenizar(self, texto: str, registrar: bool = False) -> list:
+        """Quebra o texto em palavras já limpas (minúsculas, sem acento, sem palavras vazias e sem plural)."""
         saida = []
         for bruto in re.split(r"[^\w]+|[\d_]+", (texto or "").lower()):
             if len(bruto) < 2:
@@ -127,6 +134,7 @@ class MotorIA:
         return saida
 
     def _construir_conceitos(self):
+        """Monta o "dicionário" que liga palavras da pergunta a termos do acervo (ex.: "programar" -> "software")."""
         for chaves, destino in CONCEITOS:
             termos = [radical(sem_acento(t.strip())) for t in destino.split(",")]
             for chave in chaves.split(","):
@@ -137,6 +145,7 @@ class MotorIA:
                         self.conceitos[k].append(t)
 
     def _registrar_autor(self, autor: str):
+        """Guarda as partes do nome do autor para a IA reconhecer quando alguém digitar só "Orwell", por exemplo."""
         for w in re.split(r"[^\w]+", autor.lower()):
             if len(w) < 4:
                 continue
@@ -146,6 +155,7 @@ class MotorIA:
 
     # ---- treino: TF-IDF -----------------------------------------------------
     def _treinar(self):
+        """Calcula o IDF de cada termo e o vetor TF-IDF de cada livro. É o "aprendizado" do motor."""
         frequencias, docs_por_termo = [], {}
         for o in self.acervo:
             tf = {}
@@ -164,6 +174,7 @@ class MotorIA:
         self.vetores = [normalizar({t: f * self.idf[t] for t, f in tf.items()}) for tf in frequencias]
 
     def _termos_em_comum(self, a: dict, b: dict, i: int, maximo: int = 3) -> list:
+        """Pega os termos que mais pesaram entre dois vetores. São eles que explicam a recomendação."""
         do_genero = set(self.tokenizar(self.acervo[i]["genero"]))
         pesos = {k: x * b[k] for k, x in a.items()
                  if k in b and k not in do_genero and not k.startswith("autor_")}
@@ -172,6 +183,11 @@ class MotorIA:
 
     # ---- recomendação 1: pelo histórico do leitor ---------------------------
     def recomendar_para_leitor(self, ids_lidos: list, maximo: int = 6) -> list:
+        """Recomenda livros com base no que o leitor já leu.
+
+        Livros já lidos ficam de fora e só entra quem passar da afinidade mínima.
+        Se sobrar pouca coisa (ou o leitor ainda não leu nada), completa com os mais procurados.
+        """
         lidos = [i for i, l in enumerate(self.acervo) if l["id"] in set(ids_lidos)]
         if not lidos:
             return self.mais_procuradas(maximo)
@@ -197,7 +213,7 @@ class MotorIA:
             af = calibrar(cos)
             saida.append(Recomendacao(self.acervo[i], af, f"{round(af * 100)}% de afinidade",
                                       self._explicar(i, lidos)))
-        # completa com as mais procuradas se houver poucas obras parecidas
+        # se sobrou pouca coisa parecida, completa com os mais procurados
         for r in self.mais_procuradas(len(self.acervo)):
             if len(saida) >= maximo:
                 break
@@ -209,6 +225,7 @@ class MotorIA:
         return saida
 
     def _explicar(self, cand: int, lidos: list) -> str:
+        """Monta a frase do porquê da indicação, ex.: "Porque leu 1984: temas em comum: distopia, censura"."""
         melhor = max(lidos, key=lambda i: cosseno(self.vetores[cand], self.vetores[i]))
         temas = self._termos_em_comum(self.vetores[cand], self.vetores[melhor], cand)
         lido = f"«{self.acervo[melhor]['titulo']}»"
@@ -222,6 +239,7 @@ class MotorIA:
         return f"Porque leu {lido}: {autor or tem}."
 
     def mais_procuradas(self, maximo: int = 6) -> list:
+        """Os livros mais emprestados. Servem para quem ainda não tem histórico."""
         ordem = sorted(self.acervo, key=lambda l: l["popularidade"], reverse=True)[:maximo]
         return [Recomendacao(l, 0, f"{l['popularidade']} empréstimos",
                              "Ainda não há histórico de leitura; a IA indica uma das obras mais procuradas.")
@@ -229,6 +247,7 @@ class MotorIA:
 
     # ---- recomendação 2: por pergunta em linguagem natural ------------------
     def termos_reconhecidos(self, consulta: str) -> list:
+        """As palavras da pergunta que a IA conseguiu ligar ao acervo (aparecem como "A IA entendeu: ...")."""
         saida = []
         for t in self.tokenizar(consulta):
             if t in self.idf or t in self.conceitos or t in self.autores_por_palavra:
@@ -238,6 +257,7 @@ class MotorIA:
         return saida
 
     def _vetor_consulta(self, consulta: str) -> dict:
+        """Transforma a pergunta num vetor, somando também o autor citado e os conceitos relacionados."""
         q = {}
         for t in self.tokenizar(consulta):
             if t in self.idf:
@@ -250,6 +270,7 @@ class MotorIA:
         return normalizar(q)
 
     def buscar_por_texto(self, consulta: str, maximo: int = 6) -> list:
+        """Recomenda livros a partir de uma pergunta livre, tipo "quero algo de mistério"."""
         q = self._vetor_consulta(consulta)
         if not q:
             return []
