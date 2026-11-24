@@ -1,0 +1,200 @@
+﻿=====================================================================
+          ALEXANDRIA WEB - SISTEMA DE GESTÃO DE BIBLIOTECA
+                      Guia de uso do programa
+=====================================================================
+
+
+1. O QUE VOCÊ PRECISA
+---------------------------------------------------------------------
+- Python 3.10 ou mais novo: https://www.python.org/downloads/
+  Na instalação, marque a opção "Add Python to PATH".
+- Internet na primeira vez, para baixar o Flask (feito sozinho).
+- Qualquer navegador: Chrome, Edge, Firefox...
+
+
+2. COMO ABRIR O SISTEMA
+---------------------------------------------------------------------
+1) Extraia o arquivo alexandria-web.zip em uma pasta.
+2) Entre na pasta alexandria-web.
+3) Dê dois cliques em  rodar.bat
+   (Linux/Mac: abra o terminal na pasta e rode  ./rodar.sh)
+4) Uma janela preta vai abrir. NÃO feche essa janela: ela é o
+   servidor. Enquanto ela estiver aberta, o sistema funciona.
+5) Abra o navegador e acesse:
+
+        http://127.0.0.1:5000
+
+6) Para desligar o sistema, vá na janela preta e aperte Ctrl+C
+   (ou simplesmente feche a janela).
+
+Sem o rodar.bat, você também pode abrir o terminal na pasta e digitar:
+        pip install -r requirements.txt
+        python app.py
+
+
+3. LOGINS DE TESTE
+---------------------------------------------------------------------
+EQUIPE (veem todas as telas)
+  Administrador ...  augusto.bento@alexandria.com.br   senha: Adm1958
+  Bibliotecária ...  karine.varela@alexandria.com.br   senha: Adm2608
+
+LEITORES (e-mail cadastrado + matrícula como senha)
+  Ana Silva (estudante) .....  ana.silva@aluno.edu.br       senha: 2023001
+  Bruno Almeida (estudante) .  bruno.almeida@aluno.edu.br   senha: 2023005
+  Mariana Costa (professora)   mariana.costa@escola.edu.br  senha: 2023012
+
+  Lucas Martins está INATIVO: o login dele é recusado de propósito
+  (bom para mostrar essa regra na apresentação).
+
+
+4. MENU DA EQUIPE (bibliotecário / administrador)
+---------------------------------------------------------------------
+O menu fica na barra lateral esquerda e acompanha a rolagem da tela.
+
+INÍCIO
+  - Quatro números no topo: exemplares no acervo, empréstimos ativos,
+    empréstimos em atraso e leitores ativos.
+  - "Sugestões de leitura" (Inteligência Artificial):
+      * Escolha um leitor em "Sugestões para" e a IA mostra livros
+        parecidos com o que ele já leu, com a % de afinidade e o motivo.
+      * Ou digite uma pergunta, ex.: "quero algo de mistério" ou
+        "aprender a programar", e clique em "Perguntar à IA".
+      * Os botões abaixo da pergunta são exemplos prontos.
+  - "Devoluções para hoje e atrasadas": lista com botão "Devolver".
+
+PESQUISAR LIVROS (catálogo)
+  - Busque por título, autor, ISBN ou tema.
+  - Filtre por gênero e por disponibilidade; escolha a ordenação.
+  - "Grade" mostra as capas; "Lista" mostra uma tabela.
+  - São 8 livros por página (números das páginas no fim da tela).
+  - Clique em um livro para ver os detalhes, os exemplares livres e
+    livros parecidos sugeridos pela IA.
+      * Se houver exemplar: botão "Realizar empréstimo".
+      * Se não houver: escolha o leitor e clique em "Reservar".
+
+EMPRÉSTIMOS
+  Para emprestar:
+    1) Escolha o leitor.
+    2) Escolha o livro (só aparecem livros com exemplar disponível).
+    3) A data de devolução é preenchida sozinha
+       (14 dias para estudante, 21 dias para os demais).
+    4) Clique em "Confirmar empréstimo".
+    Se algo impedir, o sistema mostra o motivo em vermelho.
+  Na lista "Empréstimos em andamento":
+    - "Renovar": estende o prazo (no máximo 2 vezes).
+    - "Devolver": pede confirmação e devolve o livro ao estoque.
+    - "Atrasados": mostra só os que passaram do prazo.
+
+RESERVAS
+  - Escolha o leitor e um livro SEM exemplar livre e clique em "Reservar".
+  - Quando o livro for devolvido, a reserva mais antiga passa de
+    AGUARDANDO para PRONTA e o exemplar fica separado para esse leitor.
+  - Quando ele pegar o livro, a reserva vira ATENDIDA.
+  - "Cancelar" encerra a reserva (se ela estava PRONTA, o exemplar
+    passa para o próximo da fila).
+
+ACERVO (cadastrar obra)
+  - Preencha título, autor e gênero (obrigatórios) e o que mais quiser.
+  - "Palavras-chave" ajudam a IA a recomendar a obra.
+  - Escolha a cor da capa: a pré-visualização ao lado muda na hora.
+  - Clique em "Gravar no acervo". A obra já aparece no catálogo e
+    nas recomendações.
+
+USUÁRIOS
+  - Busque por nome, e-mail ou matrícula e filtre por tipo.
+  - Clique em um nome para abrir o painel da direita, onde é possível:
+      * editar os dados e clicar em "Salvar";
+      * "Inativar"/"Ativar" o cadastro;
+      * "Remover" (só funciona se a pessoa nunca fez empréstimo;
+        caso contrário, use Inativar);
+      * "Novo empréstimo" para essa pessoa;
+      * ver o histórico de empréstimos.
+  - "Novo usuário": cadastra uma pessoa. A matrícula vira a senha
+    do leitor.
+  - "Exportar CSV": baixa a lista de usuários para abrir no Excel.
+
+RELATÓRIOS
+  - Indicadores gerais, empréstimos por mês, exemplares por gênero,
+    livros mais emprestados e leitores mais ativos.
+  - O botão "Imprimir" gera uma versão para impressão/PDF.
+
+SAIR
+  - No canto inferior esquerdo, ao lado do seu nome.
+
+
+5. MENU DO LEITOR
+---------------------------------------------------------------------
+O leitor vê apenas três opções:
+  INÍCIO ............ sugestões da IA com base no que ELE já leu,
+                      pergunta para a IA, "Meus empréstimos" e
+                      "Minhas reservas".
+  PESQUISAR LIVROS .. o mesmo catálogo; pode reservar livros que
+                      estejam indisponíveis.
+  RESERVAS .......... vê, cria e cancela apenas as próprias reservas.
+Se o leitor tentar abrir uma tela da equipe digitando o endereço,
+o sistema bloqueia (erro 403).
+
+
+6. REGRAS DO SISTEMA (resumo)
+---------------------------------------------------------------------
+- Estudante: até 3 empréstimos ao mesmo tempo, prazo de 14 dias.
+- Professor e demais: até 5 empréstimos, prazo de 21 dias.
+- Não empresta se: o livro não tem exemplar, o leitor está inativo,
+  o leitor tem devolução atrasada ou já está com o mesmo livro.
+- Até 2 renovações por empréstimo; não renova se alguém estiver
+  aguardando o livro na fila de reservas.
+- Usuário com empréstimo em andamento não pode ser removido.
+
+
+7. ROTEIRO RÁPIDO PARA A APRESENTAÇÃO
+---------------------------------------------------------------------
+1) Entre como Karine (bibliotecária) e mostre o Início e a IA.
+2) Pergunte à IA: "aprender a programar".
+3) Pesquise "Orwell" no catálogo e abra "1984".
+4) Faça um empréstimo para a Mariana Costa.
+5) Faça 3 empréstimos para a Fernanda Lima (estudante) e tente um
+   4º: o sistema recusa e mostra a mensagem de limite.
+6) Cadastre uma obra nova no Acervo e mostre a capa mudando de cor.
+7) Mostre Usuários, Exportar CSV e Relatórios.
+8) Saia e entre como Ana Silva (leitora) para mostrar o menu reduzido
+   e as sugestões personalizadas.
+9) Tente entrar como Lucas Martins (inativo) e mostre a recusa.
+
+
+8. VOLTAR AOS DADOS DE EXEMPLO
+---------------------------------------------------------------------
+Os dados ficam no arquivo  instance\alexandria.db  dentro da pasta.
+Para começar do zero:
+  1) Feche a janela preta do servidor.
+  2) Apague a pasta  instance.
+  3) Rode o rodar.bat de novo: o banco é recriado com os 40 livros,
+     10 usuários, empréstimos e reservas de exemplo.
+
+
+9. RODAR OS TESTES AUTOMÁTICOS
+---------------------------------------------------------------------
+Abra o terminal na pasta do projeto e digite:
+        python -m unittest discover -s testes -v
+Devem aparecer 29 testes com "ok" e, no final, "OK".
+
+
+10. PROBLEMAS COMUNS
+---------------------------------------------------------------------
+"python não é reconhecido como comando"
+   -> Reinstale o Python marcando "Add Python to PATH", ou troque
+      "python" por "py" no rodar.bat.
+
+O navegador diz que não conseguiu conectar
+   -> A janela preta do servidor está fechada. Rode o rodar.bat de novo.
+
+"Address already in use" / porta 5000 ocupada
+   -> Já existe outro servidor aberto. Feche as janelas pretas abertas
+      e rode de novo.
+
+Aparece "O formulário expirou"
+   -> O servidor foi reiniciado com a página aberta. É só tentar de
+      novo (se precisar, entre novamente).
+
+Os dados ficaram bagunçados depois dos testes
+   -> Veja o item 8 (voltar aos dados de exemplo).
+=====================================================================

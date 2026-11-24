@@ -7,8 +7,6 @@ os empréstimos, as devoluções, as renovações e as reservas de uma bibliotec
 **motor de recomendação com Inteligência Artificial** (TF-IDF e similaridade do cosseno) que sugere livros
 para cada leitor e responde perguntas em linguagem natural.
 
-![Tela de Início](docs/telas/02_inicio.png)
-
 ## Tecnologias
 
 | Camada | Tecnologia |
@@ -93,7 +91,6 @@ templates/          páginas HTML (Jinja2)
 static/css, js/     estilo e comportamento da interface
 testes/             testes automatizados
 ferramentas/        conversor dados.txt → SQL
-docs/telas/         capturas de tela
 ```
 
 ## Modelo de dados
